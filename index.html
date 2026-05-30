@@ -1,2 +1,27 @@
-<!doctype html>
-<html lang="ko"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>용산 지도</title><style>html,body{height:100%;margin:0;}iframe{width:100%;height:100%;border:0;}</style></head><body><iframe src="https://www.google.com/maps?q=%EC%9A%A9%EC%82%B0%26output%3Dembed" loading="lazy" allowfullscreen></iframe></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>용산 지도</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2atbKDPYdUYBzQKxjqGN1zGk5p0a0N6bMh0f0XQ=" crossorigin="" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100%; }
+    .leaflet-control-attribution { font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8Mk7cKaL1jxyg75OVxLdq3lDkyGbz5Pa0H1C0k=" crossorigin=""></script>
+  <script>
+    const map = L.map('map').setView([37.5326, 126.9900], 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    L.marker([37.5326, 126.9900]).addTo(map).bindPopup('용산').openPopup();
+  </script>
+</body>
+</html>
