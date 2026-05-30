@@ -1,38 +1,37 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>용산 지도</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2atbKDPYdUYBzQKxjqGN1zGk5p0a0N6bMh0f0XQ=" crossorigin="" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>용산 아카이브</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2atbKDPYdUYBzQKxjqGN1zGk5p0a0N6bMh0f0XQ=" crossorigin="">
   <style>
-    * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #111; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #fff; color: #111; }
     .app { height: 100%; display: flex; flex-direction: column; }
-    header { padding: 12px 14px; border-bottom: 1px solid #e9ecef; }
-    h1 { margin: 0; font-size: 16px; font-weight: 700; }
-    .note { margin: 4px 0 10px; font-size: 12px; color: #666; }
+    header { padding: 12px 14px 10px; border-bottom: 1px solid #e9ecef; }
+    h1 { margin: 0 0 2px; font-size: 16px; font-weight: 700; }
+    .note { margin: 0 0 10px; font-size: 12px; color: #666; }
     .filters { display: flex; flex-wrap: wrap; gap: 8px; }
-    .filter { border: 0; padding: 6px 9px; border-radius: 999px; font-size: 12px; cursor: pointer; background: #f3f5f7; color: #222; }
-    .filter.active { filter: brightness(0.95); border: 1px solid rgba(0,0,0,0.08); }
+    .filters button { border: 0; border-radius: 999px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+    .filters .active { outline: 2px solid rgba(0,0,0,0.12); }
     main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    #map { height: 45%; min-height: 220px; }
-    #list { flex: 1; overflow: auto; padding: 10px 14px 16px; background: #fff; }
-    .card { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f2f2f2; }
-    .card:last-child { border-bottom: 0; }
-    .name { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
-    .addr { font-size: 12px; color: #666; line-height: 1.3; }
-    .pill { display: inline-block; font-size: 11px; margin-top: 2px; padding: 2px 6px; border-radius: 999px; color: #fff; font-weight: 600; }
-    .actions { display: flex; gap: 6px; margin-top: 2px; }
-    .mini { border: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; font-size: 12px; font-weight: 800; color: #fff; }
+    #map { height: 42%; min-height: 220px; }
+    #list { flex: 1; overflow: auto; padding: 10px 14px 14px; }
+    .card { padding: 10px 0; border-bottom: 1px solid #f1f3f5; }
+    .name { margin: 0 0 4px; font-weight: 800; font-size: 13px; }
+    .addr { margin: 0 0 6px; font-size: 12px; color: #666; line-height: 1.35; }
+    .meta { display: flex; justify-content: space-between; align-items: center; }
+    .pill { display: inline-block; font-size: 11px; padding: 3px 7px; border-radius: 999px; font-weight: 700; color: #fff; }
+    .links { display: inline-flex; gap: 6px; }
+    .mini { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 900; font-size: 12px; text-decoration: none; color: #fff; }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
       <h1>용산 아카이브</h1>
-      <div class="note">상세 위치/영업시간은 오른쪽 G / N로 확인</div>
+      <div class="note">상세 위치/영업시간은 G / N로 확인</div>
       <div class="filters" id="filters"></div>
     </header>
     <main>
@@ -43,128 +42,118 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8Mk7cKaL1jxyg75OVxLdq3lDkyGbz5Pa0H1C0k=" crossorigin=""></script>
   <script>
-    const cats = {
-      all: { label: '전체', color: '#222' },
-      cafe: { label: '카페', color: '#4a90e2' },
-      food: { label: '음식', color: '#e74c3c' },
-      culture: { label: '문화', color: '#8e44ad' },
-      walk: { label: '산책', color: '#2ecc71' },
-      dessert: { label: '디저트', color: '#f39c12' },
-    };
+    var cats = {"all":{"label":"전체","color":"#222"},"cafe":{"label":"카페","color":"#4a90e2"},"food":{"label":"음식","color":"#e74c3c"},"culture":{"label":"문화","color":"#8e44ad"},"walk":{"label":"산책","color":"#2ecc71"},"dessert":{"label":"디저트","color":"#f39c12"}};
 
-    // (주소는 일부만 입력)
-    const places = [
-      // 음식
-      { name: '타케모토', cat: 'food', addr: '서울 용산구 두텁바위로 61' },
-      { name: '자니덤플링 본관', cat: 'food', addr: '서울 용산구 보광로59길 33' },
-      { name: '다로베', cat: 'food', addr: '서울 성동구 서울숲길 51 1층' },
-      { name: '우동 키노야', cat: 'food', addr: '' },
-      { name: '미미옥 신용산점', cat: 'food', addr: '' },
-      { name: '한땀스시', cat: 'food', addr: '' },
-      { name: '오일제', cat: 'food', addr: '삼각지' },
+    var places = [["food","타케모토","서울 용산구 두텁바위로 61"],["food","자니덤플링 본관","서울 용산구 보광로59길 33"],["food","다로베","서울 성동구 서울숲길 51 1층"],["food","우동 키노야","용산"],["food","미미옥 신용산점","신용산"],["food","한땀스시","용산"],["food","오일제","삼각지"],["cafe","자키러브","서울 용산구 후암동"],["cafe","빌라커피바","서울 용산구 해방촌"],["cafe","언더트","서울 용산구 용산"],["cafe","어프로치커피","서울 용산구 신용산"],["cafe","3F LOBBY","서울 용산구 용산"],["cafe","더 체임버 커피","서울 용산구 신용산"],["cafe","엔지니어링클럽","서울 용산구 용리단길"],["cafe","빈스미스 커피 로스터스","서울 용산구 백범로90라길 39"],["cafe","토크메모리","서울 용산구 효창원로55길 17"],["cafe","크놀프","서울 용산구 백범로77길 24"],["cafe","유틸리티 커피 로스터스","서울 용산구 원효로48길 7"],["cafe","괄호","서울 마포구 대흥역"],["cafe","HHSS HOUSE","서울 마포구 망원"],["cafe","포디 서울","서울 용산구 용산"],["cafe","우이고","서울 마포구 망원"],["cafe","포스트톤즈","서울 종로구 삼청"],["cafe","폰트 용산점","서울 용산구 한강대로15길 19-16"],["cafe","피어커피 바","서울 용산구 한남대로10길 36"],["cafe","업스탠딩","서울 용산구 해방촌"],["cafe","콤포트","서울 용산구 후암동"],["cafe","콤포타블 커피 남산점","서울 용산구 후암동"],["cafe","버번스캐빈","서울 용산구 용산"],["dessert","테디뵈르하우스","서울 용산구 용리단길"],["dessert","젤라또 피케","서울 용산구 이태원로54길 63"],["dessert","망고빙수(미상)","용산"],["culture","믹상","서울 용산구 용산"],["culture","서울문화예술교육센터 용산","서울 용산구"],["culture","PDF 서울","서울 용산구 한남동"],["culture","후지필름 하우스 오브 포토그래피 서울","서울 용산구 이태원로 191"],["culture","서울시립 사진미술관","서울 도봉구 마들로13길 68"],["culture","푸투라서울","서울 종로구 북촌로 61"],["culture","그래픽(서점)","서울 용산구 이태원 경리단길"],["walk","나의 아저씨 촬영지(기찻길)","서울 용산구"],["walk","율디세","서울 용산구"],["walk","윤슬","서울 용산구 서울역"]];
 
-      // 카페
-      { name: '자키러브', cat: 'cafe', addr: '후암동' },
-      { name: '빌라커피바', cat: 'cafe', addr: '해방촌' },
-      { name: '언더트', cat: 'cafe', addr: '용산' },
-      { name: '어프로치커피', cat: 'cafe', addr: '신용산' },
-      { name: '3F LOBBY', cat: 'cafe', addr: '용산' },
-      { name: '더 체임버 커피', cat: 'cafe', addr: '신용산' },
-      { name: '엔지니어링클럽', cat: 'cafe', addr: '용리단길' },
-      { name: '빈스미스 커피 로스터스', cat: 'cafe', addr: '서울 용산구 백범로90라길 39' },
-      { name: '토크메모리', cat: 'cafe', addr: '서울 용산구 효창원로55길 17' },
-      { name: '크놀프', cat: 'cafe', addr: '서울 용산구 백범로77길 24' },
-      { name: '유틸리티 커피 로스터스', cat: 'cafe', addr: '서울 용산구 원효로48길 7' },
-      { name: '괄호', cat: 'cafe', addr: '대흥역' },
-      { name: 'HHSS HOUSE', cat: 'cafe', addr: '망원' },
-      { name: '포디 서울', cat: 'cafe', addr: '용산' },
-      { name: '우이고', cat: 'cafe', addr: '망원' },
-      { name: '포스트톤즈', cat: 'cafe', addr: '삼청' },
-      { name: '폰트 용산점', cat: 'cafe', addr: '서울 용산구 한강대로15길 19-16' },
-      { name: '피어커피 바', cat: 'cafe', addr: '서울 용산구 한남대로10길 36' },
-      { name: '업스탠딩', cat: 'cafe', addr: '해방촌' },
-      { name: '콤포트', cat: 'cafe', addr: '후암동' },
-      { name: '콤포타블 커피 남산점', cat: 'cafe', addr: '후암동' },
-      { name: '버번스캐빈', cat: 'cafe', addr: '용산' },
+    var activeCat = "all";
+    var map = L.map("map").setView([37.5326, 126.9900], 13);
 
-      // 디저트
-      { name: '테디뵈르하우스', cat: 'dessert', addr: '용리단길' },
-      { name: '젤라또 피케', cat: 'dessert', addr: '서울 용산구 이태원로54길 63' },
-      { name: '망고빙수(미상)', cat: 'dessert', addr: '' },
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
 
-      // 문화/전시/서점
-      { name: '믹상', cat: 'culture', addr: '용산' },
-      { name: '서울문화예술교육센터 용산', cat: 'culture', addr: '용산' },
-      { name: 'PDF 서울', cat: 'culture', addr: '한남동' },
-      { name: '후지필름 하우스 오브 포토그래피 서울', cat: 'culture', addr: '서울 용산구 이태원로 191' },
-      { name: '서울시립 사진미술관', cat: 'culture', addr: '서울 도봉구 마들로13길 68' },
-      { name: '푸투라서울', cat: 'culture', addr: '서울 종로구 북촌로 61' },
-      { name: '그래픽(서점)', cat: 'culture', addr: '이태원 경리단길' },
+    L.marker([37.5326, 126.9900]).addTo(map).bindPopup("용산").openPopup();
 
-      // 산책/포토스팟
-      { name: '나의 아저씨 촬영지(기찻길)', cat: 'walk', addr: '용산' },
-      { name: '율디세', cat: 'walk', addr: '용산' },
-      { name: '윤슬', cat: 'walk', addr: '서울역' },
-    ];
-
-    let activeCat = 'all';
-
-    function mapSearch(service, q) {
-      const query = encodeURIComponent(q);
-      if (service === 'google') return `https://www.google.com/maps/search/?api=1&query=${query}`;
-      return `https://map.naver.com/v5/search/${query}`;
+    function gLink(q) {
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+    }
+    function nLink(q) {
+      return "https://map.naver.com/v5/search/" + encodeURIComponent(q);
     }
 
-    function renderFilters() {
-      const root = document.getElementById('filters');
-      root.innerHTML = Object.entries(cats).map(([key, info]) => {
-        return `<button class="filter${key === activeCat ? ' active' : ''}" style="background:${key==='all' ? '#f3f5f7' : info.color}; color:${key==='all' ? '#222' : '#fff'}" data-cat="${key}">${info.label}</button>`;
-      }).join('');
-      root.addEventListener('click', (e) => {
-        const cat = e.target.getAttribute('data-cat');
-        if (!cat) return;
-        activeCat = cat;
-        document.querySelectorAll('.filter').forEach(btn => btn.classList.toggle('active', btn.dataset.cat === activeCat));
-        renderList();
+    function query(p) {
+      return (p[2] && p[2].length ? (p[1] + " " + p[2]) : (p[1] + " 용산"));
+    }
+
+    function buildFilters() {
+      var root = document.getElementById("filters");
+      root.innerHTML = "";
+      Object.keys(cats).forEach(function(key) {
+        var info = cats[key];
+        var btn = document.createElement("button");
+        btn.textContent = info.label;
+        btn.dataset.cat = key;
+        btn.style.background = key === "all" ? "#f3f5f7" : info.color;
+        btn.style.color = key === "all" ? "#222" : "#fff";
+        if (key === activeCat) btn.classList.add("active");
+        btn.addEventListener("click", function() {
+          activeCat = this.dataset.cat;
+          buildFilters();
+          buildList();
+        });
+        root.appendChild(btn);
       });
     }
 
-    function renderList() {
-      const root = document.getElementById('list');
-      const filtered = activeCat === 'all' ? places : places.filter(p => p.cat === activeCat);
-      root.innerHTML = filtered.map(p => {
-        const c = cats[p.cat] || cats.cafe;
-        const q = p.addr ? `${p.name} ${p.addr}` : `${p.name} 용산`;
-        const g = mapSearch('google', q);
-        const n = mapSearch('naver', q);
-        return `
-          <div class="card" data-cat="${p.cat}">
-            <div>
-              <div class="name">${p.name}</div>
-              <div class="addr">${p.addr || ''}</div>
-              <span class="pill" style="background:${c.color}">${c.label}</span>
-              <div class="actions">
-                <a class="mini" style="background:${c.color}" href="${g}" target="_blank" rel="noopener">G</a>
-                <a class="mini" style="background:${c.color}" href="${n}" target="_blank" rel="noopener">N</a>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
+    function buildList() {
+      var root = document.getElementById("list");
+      root.innerHTML = "";
+      var filtered = activeCat === "all" ? places : places.filter(function(p){return p[0]===activeCat;});
+      filtered.forEach(function(p) {
+        var c = cats[p[0]];
+        var q = query(p);
+        var card = document.createElement("div");
+        card.className = "card";
+        card.dataset.cat = p[0];
+
+        var name = document.createElement("div");
+        name.className = "name";
+        name.textContent = p[1];
+
+        var addr = document.createElement("div");
+        addr.className = "addr";
+        addr.textContent = p[2];
+
+        var meta = document.createElement("div");
+        meta.className = "meta";
+
+        var pill = document.createElement("span");
+        pill.className = "pill";
+        pill.style.background = c.color;
+        pill.textContent = c.label;
+
+        var links = document.createElement("span");
+        links.className = "links";
+
+        var g = document.createElement("a");
+        g.className = "mini";
+        g.href = gLink(q);
+        g.target = "_blank";
+        g.rel = "noopener";
+        g.style.background = c.color;
+        g.textContent = "G";
+
+        var n = document.createElement("a");
+        n.className = "mini";
+        n.href = nLink(q);
+        n.target = "_blank";
+        n.rel = "noopener";
+        n.style.background = c.color;
+        n.textContent = "N";
+
+        links.appendChild(g);
+        links.appendChild(n);
+
+        meta.appendChild(pill);
+        meta.appendChild(links);
+
+        card.appendChild(name);
+        card.appendChild(addr);
+        card.appendChild(meta);
+
+        card.addEventListener("click", function(e){
+          if (e.target.tagName === "A") return;
+          window.open(gLink(q), "_blank");
+        });
+
+        root.appendChild(card);
+      });
     }
 
-    function initMap() {
-      const map = L.map('map').setView([37.5326, 126.9900], 13);
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-      }).addTo(map);
-      L.marker([37.5326, 126.9900]).addTo(map).bindPopup('용산').openPopup();
-    }
-
-    // bootstrap
-    initMap();
-    renderFilters();
-    renderList();
+    buildFilters();
+    buildList();
   </script>
 </body>
 </html>
